@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>創作者小工具 v0.2.4（無內嵌腳本）</title>
+  <style>
+    :root { --bg:#0f1320; --panel:#161b2e; --ink:#e6e9f2; --muted:#aab0c0; --accent:#7aa2ff; --good:#73d673; --warn:#ffd166; --bad:#ff6b6b; }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Noto Sans TC",Segoe UI,Roboto,Helvetica,Arial; background:linear-gradient(160deg,#0f1320,#12172a 40%,#0b1020); color:var(--ink)}
+    .wrap{max-width:1080px;margin:0 auto;padding:18px}
+    header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .title{font-size:20px;font-weight:800;letter-spacing:.3px;display:flex;gap:10px;align-items:center}
+    .badge{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid #2a355f;background:#121732;color:#aab0c0}
+    .badge.ok{background:#18311f;border-color:#2e6540;color:#bff5c9}
+    .badge.err{background:#421d1d;border-color:#7a3333;color:#ffc2c2}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{border:1px solid #222a43;background:#121732;color:var(--ink);padding:8px 12px;border-radius:12px;cursor:pointer;transition:all .2s;font-weight:700}
+    .tab[aria-selected="true"]{background:var(--accent);color:#081224;border-color:transparent}
+    .panel{background:var(--panel);border:1px solid #1c2442;border-radius:16px;padding:14px}
+    .grid{display:grid;gap:12px}
+    .g2{grid-template-columns:1fr 1fr}
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+    input,textarea,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #253055;background:#0e1430;color:var(--ink);outline:none}
+    textarea{min-height:84px;resize:vertical}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn{background:#23305e;border:1px solid #2d3b75;color:var(--ink);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:700}
+    .btn:hover{filter:brightness(1.1)}
+    .btn.pri{background:var(--accent);border-color:transparent;color:#0a1530}
+    .btn.good{background:var(--good);color:#04220e;border-color:transparent}
+    .btn.warn{background:#ffd166;color:#231a00;border-color:transparent}
+    .btn.bad{background:#ff6b6b;color:#2b0505;border-color:transparent}
+    .card{background:#0c1128;border:1px solid #1a2142;border-radius:14px;padding:12px}
+    .hint{color:var(--muted);font-size:12px}
+    .footer{opacity:.7;margin-top:18px;font-size:12px;text-align:center}
+    canvas{max-width:100%;background:#0b0f22;border:1px solid #283056;border-radius:12px}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:10px;border:1px solid #23305a;border-radius:12px;background:#0e1430}
+    .item .meta{display:flex;flex-direction:column;gap:4px}
+    .item .acts{display:flex;gap:8px}
+    .pill{padding:4px 8px;border-radius:999px;font-weight:700;font-size:12px;display:inline-block}
+    .status-Queued{background:#2b335a;color:#b8c0ff}
+    .status-Sketch{background:#233a2e;color:#b7f5c6}
+    .status-WIP{background:#3c2d0f;color:#ffdca8}
+    .status-Review{background:#3f2142;color:#ffc5f3}
+    .status-Final{background:#213b45;color:#b8f4ff}
+    .status-Delivered{background:#233a2e;color:#b7f5c6}
+    .status-OnHold{background:#3a3823;color:#fff0a8}
+    .status-Canceled{background:#402020;color:#ffb3b3}
+    .hr{height:1px;background:#253056;margin:10px 0}
+    #log{white-space:pre-wrap;font-size:12px;color:#9fb1ff}
+    noscript{display:block;background:#402020;color:#ffdcdc;padding:10px;border:1px solid #7a3333;border-radius:10px;margin:10px 0}
+    @media (max-width:900px){ .g2{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <noscript>此頁需要啟用 JavaScript 才能使用。請用 Chrome 開啟，並確認「允許 JavaScript」。</noscript>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        創作者小工具 v0.2.4（無內嵌腳本）
+        <span id="js-badge" class="badge">JS: 初始化中…</span>
+      </div>
+      <nav class="tabs" role="tablist" aria-label="主要功能">
+        <button class="tab" role="tab" aria-selected="true" data-tab="char">角色卡</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="commission">委託排單</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="settings">設定/備份/診斷</button>
+      </nav>
+    </header>
+
+    <!-- 角色卡 -->
+    <section class="panel" id="panel-char" role="tabpanel">
+      <div class="grid g2">
+        <div class="card">
+          <div class="grid g2">
+            <div><label>角色名稱</label><input id="c-name" placeholder="角色名稱"></div>
+            <div><label>稱號 / 別名</label><input id="c-alias" placeholder="稱號或暱稱（可留空）"></div>
+            <div><label>年齡 / 種族</label><input id="c-age" placeholder="例如：17 / 人類（可留空）"></div>
+            <div><label>代名詞</label><input id="c-pron" placeholder="她 / 他 / they（可留空）"></div>
+            <div><label>性格關鍵詞（逗號隔開）</label><input id="c-traits" placeholder="沉著, 外冷內熱, 任性"></div>
+            <div><label>代表色（#hex，逗號隔開）</label><input id="c-colors" placeholder="#7aa2ff, #ffd166, #ff6b6b"></div>
+          </div>
+          <label style="margin-top:10px">外觀描述</label>
+          <textarea id="c-looks" placeholder="髮色、髮長、眼型、服裝、配件…"></textarea>
+          <div class="grid g2">
+            <div><label>語氣 / 口頭禪</label><textarea id="c-voice" placeholder="說話節奏、語尾、常見句型…"></textarea></div>
+            <div><label>不可忽略特徵（務必畫對）</label><textarea id="c-must" placeholder="例：異色瞳（左金右藍）、單邊耳墜（右耳）、鎖骨有疤…"></textarea></div>
+          </div>
+          <div class="grid g2">
+            <div><label>常被畫錯的點</label><textarea id="c-mistakes" placeholder="例：袖口黑色、髮夾左側、鞋帶雙色…"></textarea></div>
+            <div><label>避雷事項 / 不接受的要素</label><textarea id="c-nope" placeholder="例：不要改瞳色；不接受血腥；不畫機械盔甲…"></textarea></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn pri" id="btn-render">產生角色卡</button>
+            <button class="btn" id="btn-save">儲存到清單</button>
+            <button class="btn" id="btn-reset">清空表單</button>
+            <span class="hint">→ 右側可預覽 / 匯出 PNG</span>
+          </div>
+        </div>
+        <div class="card">
+          <canvas id="cardCanvas" width="900" height="1200" aria-label="角色卡預覽"></canvas>
+          <div class="row" style="margin-top:10px">
+            <button class="btn good" id="btn-download">下載 PNG</button>
+            <select id="cardList" style="min-width:240px"></select>
+            <button class="btn" id="btn-load">讀取</button>
+            <button class="btn bad" id="btn-del-card">刪除</button>
+          </div>
+          <div class="hr"></div>
+          <div class="row">
+            <label>卡面風格</label>
+            <select id="theme">
+              <option value="midnight">午夜藍</option>
+              <option value="sunset">暮霞橘</option>
+              <option value="forest">深林綠</option>
+              <option value="rose">玫瑰紫</option>
+            </select>
+            <label>標題字體大小</label>
+            <input id="titleSize" type="number" value="44" min="28" max="72" style="width:110px">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 排單 -->
+    <section class="panel" id="panel-commission" role="tabpanel" hidden>
+      <div class="grid g2">
+        <div><label>委託人</label><input id="m-client" placeholder="委託人暱稱 / 名稱"></div>
+        <div><label>專案描述</label><input id="m-desc" placeholder="例：半身插圖（簡單背景）"></div>
+        <div><label>金額 (NT$)</label><input id="m-price" type="number" min="0" step="1" placeholder="0"></div>
+        <div><label>狀態</label>
+          <select id="m-status"><option>Queued</option><option>Sketch</option><option>WIP</option><option>Review</option><option>Final</option><option>Delivered</option><option>OnHold</option><option>Canceled</option></select>
+        </div>
+        <div><label>開始日</label><input id="m-start" type="date"></div>
+        <div><label>期限</label><input id="m-due" type="date"></div>
+        <div><label>參考連結</label><input id="m-ref" placeholder="https://..."></div>
+        <div><label>發票 / 金流連結</label><input id="m-invoice" placeholder="https://..."></div>
+        <div><label>備註</label><input id="m-notes" placeholder="備註／注意事項（可留空）"></div>
+      </div>
+      <div class="row" style="margin:10px 0 16px">
+        <button class="btn pri" id="btn-add-job">新增到清單</button>
+        <button class="btn" id="btn-export">匯出 JSON</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none">
+        <button class="btn" id="btn-import">匯入 JSON</button>
+        <span class="hint">資料存於本機（localStorage）</span>
+      </div>
+      <div class="list" id="jobList"></div>
+
+      <div class="hr"></div>
+      <div class="row">
+        <span class="hint">公開頁面（會下載一個靜態 HTML，丟到網頁空間就能分享）</span>
+        <label class="row"><input type="checkbox" id="pub-price" checked>包含金額</label>
+        <label class="row"><input type="checkbox" id="pub-notes">包含備註</label>
+        <label class="row"><input type="checkbox" id="pub-links" checked>包含連結</label>
+        <button class="btn good" id="btn-public">下載公開頁面</button>
+      </div>
+    </section>
+
+    <!-- 設定/備份/診斷 -->
+    <section class="panel" id="panel-settings" role="tabpanel" hidden>
+      <div class="card">
+        <div class="row">
+          <button class="btn warn" id="btn-clear">清除所有本機資料</button>
+          <span class="hint">⚠️ 不可復原，請先匯出 JSON 備份</span>
+        </div>
+        <div class="hr"></div>
+        <div><b>診斷資訊</b></div>
+        <div id="diag" class="hint"></div>
+        <div class="hr"></div>
+        <div><b>錯誤日誌</b></div>
+        <div id="log"></div>
+      </div>
+      <div class="footer">Made with ♡ — v0.2.4</div>
+    </section>
+  </div>
+
+  <script src="boot.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
